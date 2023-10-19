@@ -1,8 +1,8 @@
 {
-  "name": "file-to-gcp-bucket",
+  "name": "gcp-vertex-utils",
   "version": "1.0.0",
   "main": "index.js",
-  "repository": "git@github.com:herrera-ignacio/file-to-gcp-bucket.git",
+  "repository": "git@github.com:herrera-ignacio/gcp-vertex-utils.git",
   "author": "Ignacio Herrera <ignacioromanherrera@gmail.com>",
   "license": "MIT",
   "dependencies": {
@@ -16,6 +16,7 @@
     "eslint-plugin-promise": "^6.0.0"
   },
   "scripts": {
-    "start": "node ./index"
+    "upload_gcp": "node ./index",
+    "get_csv": "node ./createCsv.js"
   }
 }
