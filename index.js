@@ -1,35 +1,95 @@
-const fs = require('fs')
-const path = require('path');
-const { Storage } = require('@google-cloud/storage')
-
-const BUCKET_NAME = 'gcp-bucket-name'
-const BUCKET_DESTINATION_FOLDER = 'demo'
-const FOLDER_TO_UPLOAD = '/absolute-path'
+const BUCKET_DESTINATION_FOLDER = 'training/9/'
 
 // Initialize storage
-const storage = new Storage({
-  keyFilename: './keys.json'
-})
+// Copyright 2019 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-const bucket = storage.bucket(BUCKET_NAME)
+'use strict';
 
-/**
- *
- * @param {string} path to file
- */
-const uploadToBucket = async (filePath, fileName) => {
-  try {
-    console.log(`⏳ ${fileName}`)
-    await bucket.upload(path.join(filePath, fileName), { destination: BUCKET_DESTINATION_FOLDER })
-    console.log(`✅ ${BUCKET_NAME}/${BUCKET_DESTINATION_FOLDER}/${fileName}`)
-  } catch (err) {
-    console.log(`❌ ${fileName} - ${err.message}`)
+// sample-metadata:
+//   title: Upload a directory to a bucket.
+//   description: Uploads full hierarchy of a local directory to a bucket.
+//   usage: node files.js upload-directory <bucketName> <directoryPath>
+
+function main(
+  bucketName = 'fashion-1-bucket',
+  directoryPath = 'C:\\Users\\ignac\\Downloads\\model\\out\\training\\9'
+) {
+  // [START upload_directory]
+  /**
+   * TODO(developer): Uncomment the following lines before running the sample.
+   */
+  // The ID of your GCS bucket
+  // const bucketName = 'your-unique-bucket-name';
+
+  // The local directory to upload
+  // const directoryPath = './local/path/to/directory';
+
+  // Imports the Google Cloud client library
+  const {Storage} = require('@google-cloud/storage');
+
+  // Creates a client
+  const storage = new Storage({
+    keyFilename: './keys.json'
+  });
+
+  const {promisify} = require('util');
+  const fs = require('fs');
+  const path = require('path');
+
+  const readdir = promisify(fs.readdir);
+  const stat = promisify(fs.stat);
+
+  async function* getFiles(directory = '.') {
+    for (const file of await readdir(directory)) {
+      const fullPath = path.join(directory, file);
+      const stats = await stat(fullPath);
+
+      if (stats.isDirectory()) {
+        yield* getFiles(fullPath);
+      }
+
+      if (stats.isFile()) {
+        yield fullPath;
+      }
+    }
   }
+
+  async function uploadDirectory() {
+    const bucket = storage.bucket(bucketName);
+    let successfulUploads = 0;
+
+    for await (const filePath of getFiles(directoryPath)) {
+      try {
+        const destination = BUCKET_DESTINATION_FOLDER + path.basename(filePath);
+
+        await bucket.upload(filePath, { destination });
+
+        console.log(`Successfully uploaded: ${filePath}`);
+        successfulUploads++;
+      } catch (e) {
+        console.error(`Error uploading ${filePath}:`, e);
+      }
+    }
+
+    console.log(
+      `${successfulUploads} files uploaded to ${bucketName} successfully.`
+    );
+  }
+
+  uploadDirectory().catch(console.error);
+  // [END upload_directory]
 }
 
-const main = async () => {
-  const fileNames = fs.readdirSync(FOLDER_TO_UPLOAD)
-  await Promise.all(fileNames.map(fileName => uploadToBucket(FOLDER_TO_UPLOAD, fileName)))
-};
-
-(async () => main())()
+main(...process.argv.slice(2));
